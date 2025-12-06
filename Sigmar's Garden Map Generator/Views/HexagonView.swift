@@ -13,13 +13,14 @@ struct HexagonView: Shape {
         let width = rect.width
         let height = rect.height
         
-        // Hexagon points (flat-top hexagon)
+        // Pointy-top hexagon (yatay uzun)
         let centerX = width / 2
         let centerY = height / 2
         let radius = min(width, height) / 2
         
         for i in 0..<6 {
-            let angle = Double.pi / 3.0 * Double(i) - Double.pi / 6.0
+            // Pointy-top: başlangıç açısı 0 (üst noktadan başla)
+            let angle = Double.pi / 3.0 * Double(i)
             let x = centerX + radius * cos(angle)
             let y = centerY + radius * sin(angle)
             
@@ -42,4 +43,3 @@ struct HexagonShape: View {
             .stroke(Color.white, lineWidth: 1)
     }
 }
-

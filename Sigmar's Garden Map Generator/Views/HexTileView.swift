@@ -1,14 +1,16 @@
 //
-//  AtomView.swift
-//  SigmarGarden
+//  HexTileView.swift
+//  Sigmar's Garden
 //
-//  Created on iOS
+//  Unified hex tile component
 //
 
 import SwiftUI
 
-struct AtomView: View {
-    let atomType: String
+struct HexTileView: View {
+    @Environment(\.colorScheme) var colorScheme
+    
+    let atomType: String?  // nil for empty tile
     let isSelectable: Bool
     let isSelected: Bool
     let hexWidth: CGFloat
@@ -16,31 +18,60 @@ struct AtomView: View {
     
     var body: some View {
         ZStack {
-            // Background hexagon filled with color
+            // Fill (affected by selectability)
             HexagonView()
-                .fill(backgroundColor)
-                .overlay(
-                    HexagonView()
-                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                )
-                .overlay(
-                    HexagonView()
-                        .stroke(isSelected ? Color.yellow : Color.clear, lineWidth: 3)
-                )
-                .opacity(isSelectable ? 1.0 : 0.3)
+                .fill(fillColor)
+                .opacity(contentOpacity)
             
-            // SVG Icon from Asset Catalog (template rendering for color)
-            Image(iconName)
-                .renderingMode(.template)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .foregroundColor(iconColor)
-                .frame(width: hexWidth * 0.55, height: hexHeight * 0.55)
-                .opacity(isSelectable ? 1.0 : 0.3)
+            // Stroke - ALWAYS visible, not affected by selectability
+            HexagonView()
+                .stroke(strokeColor, lineWidth: strokeWidth)
+            
+            // Selection highlight
+            if isSelected {
+                HexagonView()
+                    .stroke(Color.yellow, lineWidth: 3)
+            }
+            
+            // Icon (only for filled tiles, affected by selectability)
+            if let atomType = atomType, !atomType.isEmpty, atomType != "ph" {
+                Image(iconName(for: atomType))
+                    .renderingMode(.template)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(iconColor(for: atomType))
+                    .frame(width: hexWidth * 0.55, height: hexHeight * 0.55)
+                    .opacity(contentOpacity)
+            }
         }
+        .frame(width: hexWidth, height: hexHeight)
     }
     
-    private var iconName: String {
+    // MARK: - Computed Properties
+    
+    private var contentOpacity: Double {
+        isSelectable ? 1.0 : 0.3
+    }
+    
+    private var strokeColor: Color {
+        colorScheme == .light ? Color.black.opacity(0.3) : Color.white.opacity(0.3)
+    }
+    
+    private var strokeWidth: CGFloat {
+        1.5
+    }
+    
+    private var fillColor: Color {
+        guard let atomType = atomType, !atomType.isEmpty, atomType != "ph" else {
+            // Empty tile
+            return colorScheme == .light ? Color.gray.opacity(0.15) : Color.white.opacity(0.1)
+        }
+        return backgroundColor(for: atomType)
+    }
+    
+    // MARK: - Atom Properties
+    
+    private func iconName(for atomType: String) -> String {
         switch atomType {
         case "water": return "WaterIcon"
         case "fire": return "FireIcon"
@@ -61,7 +92,7 @@ struct AtomView: View {
         }
     }
     
-    private var backgroundColor: Color {
+    private func backgroundColor(for atomType: String) -> Color {
         switch atomType {
         case "water": return Color(red: 0.2, green: 0.4, blue: 0.9)
         case "fire": return Color(red: 0.9, green: 0.3, blue: 0.2)
@@ -82,7 +113,7 @@ struct AtomView: View {
         }
     }
     
-    private var iconColor: Color {
+    private func iconColor(for atomType: String) -> Color {
         switch atomType {
         case "water": return .white
         case "fire": return .white
@@ -102,6 +133,5 @@ struct AtomView: View {
         default: return .black
         }
     }
-    
 }
 

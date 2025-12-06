@@ -11,7 +11,19 @@ import SwiftUI
 struct Sigmar_s_Garden_Map_GeneratorApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                Tab("Ranks", systemImage: "chart.bar.fill") {
+                    LeaderboardsView()
+                }
+                
+                Tab("Play", systemImage: "hexagon.fill") {
+                    ContentView()
+                }
+                
+                Tab("Rules", systemImage: "book.fill") {
+                    RulesView()
+                }
+            }
         }
     }
 }
