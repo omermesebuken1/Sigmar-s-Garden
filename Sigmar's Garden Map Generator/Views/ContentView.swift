@@ -32,6 +32,16 @@ struct ContentView: View {
                 Color(.systemBackground)
                     .ignoresSafeArea()
                 
+                VStack(spacing: 0) {
+                    // Atom Counter Bar (top)
+                    if isPlaying && !cells.isEmpty {
+                        AtomCounterView(cells: cells)
+                            .padding(.top, 8)
+                    }
+                    
+                    Spacer()
+                }
+                
                 // Game Board
                 if !cells.isEmpty {
                     GameBoardView(
@@ -44,7 +54,7 @@ struct ContentView: View {
                             height: geometry.size.height - 150
                         )
                     )
-                    .offset(y: -80)
+                    .offset(y: -50)
                 }
                 
                 // Bottom Controls (hidden when completed)

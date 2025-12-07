@@ -13,6 +13,7 @@ struct HexTileView: View {
     let atomType: String?  // nil for empty tile
     let isSelectable: Bool
     let isSelected: Bool
+    let isGameActive: Bool  // When false, all tiles show uniform colors
     let hexWidth: CGFloat
     let hexHeight: CGFloat
     
@@ -39,7 +40,7 @@ struct HexTileView: View {
                     .renderingMode(.template)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .foregroundColor(iconColor(for: atomType))
+                    .foregroundColor((isGameActive && isSelectable) ? iconColor(for: atomType) : uniformIconColor)
                     .frame(width: hexWidth * 0.55, height: hexHeight * 0.55)
                     .opacity(contentOpacity)
             }
@@ -50,7 +51,15 @@ struct HexTileView: View {
     // MARK: - Computed Properties
     
     private var contentOpacity: Double {
-        isSelectable ? 1.0 : 0.3
+        // Empty tiles always have consistent opacity
+        guard let atomType = atomType, !atomType.isEmpty, atomType != "ph" else {
+            return 1.0
+        }
+        // Before game starts, all tiles have same opacity
+        if !isGameActive {
+            return 1.0
+        }
+        return isSelectable ? 1.0 : 0.3
     }
     
     private var strokeColor: Color {
@@ -61,10 +70,18 @@ struct HexTileView: View {
         1.5
     }
     
+    private var uniformIconColor: Color {
+        colorScheme == .light ? Color.gray.opacity(0.6) : Color.gray.opacity(0.7)
+    }
+    
     private var fillColor: Color {
         guard let atomType = atomType, !atomType.isEmpty, atomType != "ph" else {
             // Empty tile
             return colorScheme == .light ? Color.gray.opacity(0.15) : Color.white.opacity(0.1)
+        }
+        // Uniform color when game not started OR when tile is not selectable
+        if !isGameActive || !isSelectable {
+            return colorScheme == .light ? Color.gray.opacity(0.25) : Color.gray.opacity(0.35)
         }
         return backgroundColor(for: atomType)
     }
@@ -119,17 +136,17 @@ struct HexTileView: View {
         case "fire": return .white
         case "air": return .white
         case "earth": return .white
-        case "salt": return .black
+        case "salt": return .blue
         case "quintessence": return .white
-        case "quicksilver": return .black
+        case "quicksilver": return .orange
         case "lead": return .white
         case "tin": return .cyan
         case "iron": return .red
         case "copper": return .orange
         case "silver": return .gray
         case "gold": return .yellow
-        case "mors": return .red
-        case "vitae": return .green
+        case "mors": return .purple
+        case "vitae": return .white
         default: return .black
         }
     }

@@ -39,6 +39,7 @@ struct GameBoardView: View {
                         atomType: cell.contains.isEmpty ? nil : cell.contains,
                         isSelectable: isGameActive ? cell.selectable : false,  // All locked if game not active
                         isSelected: selectedCells.contains(cell.id),
+                        isGameActive: isGameActive,
                         hexWidth: hexWidth,
                         hexHeight: hexHeight
                     )
