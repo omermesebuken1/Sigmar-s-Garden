@@ -7,21 +7,62 @@
 
 import SwiftUI
 import Combine
+import GameKit
 
 struct ContentView: View {
     @State private var cells: [Cell] = []
     @State private var selectedCells: Set<Int> = []
     @State private var isPlaying = false
     @State private var isCompleted = false
+    @State private var isGameLost = false
+    @State private var loseOverlayOpacity: Double = 0
+    @State private var winOverlayOpacity: Double = 0
     @State private var isNewHighScore = false
     @State private var showRestartConfirmation = false
     @State private var gameStartTime: Date?
+    @State private var selectedDifficulty: Difficulty = .hard
+    
+    @StateObject private var gameCenterManager = GameCenterManager.shared
     
     @Namespace private var buttonNamespace
     @State private var currentTime: TimeInterval = 0
     @State private var finalTime: TimeInterval = 0
     
-    @AppStorage("bestTime") private var bestTime: Double = 0
+    // Per-difficulty best times
+    @AppStorage("bestTime_easy") private var bestTimeEasy: Double = 0
+    @AppStorage("bestTime_medium") private var bestTimeMedium: Double = 0
+    @AppStorage("bestTime_hard") private var bestTimeHard: Double = 0
+    
+    // Per-difficulty solve counts
+    @AppStorage("solveCount_easy") private var solveCountEasy: Int = 0
+    @AppStorage("solveCount_medium") private var solveCountMedium: Int = 0
+    @AppStorage("solveCount_hard") private var solveCountHard: Int = 0
+    
+    private var bestTime: Double {
+        get {
+            switch selectedDifficulty {
+            case .easy: return bestTimeEasy
+            case .medium: return bestTimeMedium
+            case .hard: return bestTimeHard
+            }
+        }
+    }
+    
+    private func setBestTime(_ time: Double) {
+        switch selectedDifficulty {
+        case .easy: bestTimeEasy = time
+        case .medium: bestTimeMedium = time
+        case .hard: bestTimeHard = time
+        }
+    }
+    
+    private func incrementSolveCount() {
+        switch selectedDifficulty {
+        case .easy: solveCountEasy += 1
+        case .medium: solveCountMedium += 1
+        case .hard: solveCountHard += 1
+        }
+    }
     
     let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     
@@ -33,6 +74,21 @@ struct ContentView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    // Difficulty Picker (only visible when not playing)
+                    if !isPlaying && !isCompleted && !isGameLost {
+                        Picker("Zorluk", selection: $selectedDifficulty) {
+                            ForEach(Difficulty.allCases) { difficulty in
+                                Text(difficulty.displayName).tag(difficulty)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 40)
+                        .padding(.top, 16)
+                        .onChange(of: selectedDifficulty) { _, _ in
+                            prepareBoard()
+                        }
+                    }
+                    
                     // Atom Counter Bar (top)
                     if isPlaying && !cells.isEmpty {
                         AtomCounterView(cells: cells)
@@ -47,7 +103,8 @@ struct ContentView: View {
                     GameBoardView(
                         cells: cells,
                         selectedCells: selectedCells,
-                        isGameActive: isPlaying,  // Pass game state
+                        isGameActive: isPlaying,
+                        gridSize: selectedDifficulty.gridSize,
                         onCellTapped: handleCellTap,
                         availableSize: CGSize(
                             width: geometry.size.width,
@@ -57,8 +114,8 @@ struct ContentView: View {
                     .offset(y: -50)
                 }
                 
-                // Bottom Controls (hidden when completed)
-                if !isCompleted {
+                // Bottom Controls (hidden when completed or lost)
+                if !isCompleted && !isGameLost {
                     VStack {
                         Spacer()
                         
@@ -146,10 +203,11 @@ struct ContentView: View {
                     }
                 }
                 
-                // Completion Overlay
+                // Win Overlay - frosting glass effect
                 if isCompleted {
                     Rectangle()
                         .fill(.ultraThinMaterial)
+                        .opacity(winOverlayOpacity)
                         .ignoresSafeArea()
                     
                     VStack(spacing: 20) {
@@ -186,11 +244,47 @@ struct ContentView: View {
                         .padding(.top, 20)
                     }
                     .padding(40)
+                    .opacity(winOverlayOpacity)
+                    .scaleEffect(0.9 + (winOverlayOpacity * 0.1))
+                }
+                
+                // Lose Overlay - frosting glass effect
+                if isGameLost {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .opacity(loseOverlayOpacity)
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 20) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundStyle(.red)
+                        
+                        Text("No Moves Left!")
+                            .font(.largeTitle.bold())
+                    
+                        Button {
+                            restartGame()
+                        } label: {
+                            Label("Try Again", systemImage: "arrow.clockwise")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                        .controlSize(.large)
+                        .padding(.horizontal, 40)
+                        .padding(.top, 20)
+                    }
+                    .padding(40)
+                    .opacity(loseOverlayOpacity)
+                    .scaleEffect(0.9 + (loseOverlayOpacity * 0.1))
                 }
             }
         }
         .onAppear {
             prepareBoard()
+            gameCenterManager.authenticate()
         }
         .onReceive(timer) { _ in
             if isPlaying, let startTime = gameStartTime {
@@ -200,8 +294,9 @@ struct ContentView: View {
     }
     
     private func prepareBoard() {
-        var newCells = GridCalculator.createCells()
-        let generator = MapGenerator(cells: newCells)
+        let gridCalculator = GridCalculator(difficulty: selectedDifficulty)
+        var newCells = gridCalculator.createCells()
+        let generator = MapGenerator(cells: newCells, difficulty: selectedDifficulty)
         newCells = generator.generateBoard()
         
         cells = newCells
@@ -212,6 +307,7 @@ struct ContentView: View {
     private func startGame() {
         // Don't generate new board - use the existing one
         isCompleted = false
+        isGameLost = false
         isNewHighScore = false
         isPlaying = true
         gameStartTime = Date()
@@ -221,6 +317,9 @@ struct ContentView: View {
     private func restartGame() {
         isPlaying = false
         isCompleted = false
+        isGameLost = false
+        loseOverlayOpacity = 0
+        winOverlayOpacity = 0
         isNewHighScore = false
         gameStartTime = nil
         currentTime = 0
@@ -231,11 +330,58 @@ struct ContentView: View {
         isPlaying = false
         isCompleted = true
         finalTime = currentTime
+        winOverlayOpacity = 0
+        
+        // Animate the frosting effect
+        withAnimation(.easeIn(duration: 1.2)) {
+            winOverlayOpacity = 0.9
+        }
+        
+        // Increment solve count
+        incrementSolveCount()
         
         // Check for high score
         if bestTime == 0 || finalTime < bestTime {
-            bestTime = finalTime
+            setBestTime(finalTime)
             isNewHighScore = true
+        }
+        
+        // Submit to Game Center
+        submitScoresToGameCenter()
+    }
+    
+    private func submitScoresToGameCenter() {
+        let currentSolveCount: Int
+        switch selectedDifficulty {
+        case .easy: currentSolveCount = solveCountEasy
+        case .medium: currentSolveCount = solveCountMedium
+        case .hard: currentSolveCount = solveCountHard
+        }
+        
+        Task {
+            // Submit scores
+            await gameCenterManager.submitTime(finalTime, for: selectedDifficulty)
+            await gameCenterManager.submitSolveCount(currentSolveCount, for: selectedDifficulty)
+            
+            // Check achievements
+            await gameCenterManager.checkAchievements(
+                difficulty: selectedDifficulty,
+                time: finalTime,
+                easySolves: solveCountEasy,
+                mediumSolves: solveCountMedium,
+                hardSolves: solveCountHard
+            )
+        }
+    }
+    
+    private func loseGame() {
+        isPlaying = false
+        isGameLost = true
+        loseOverlayOpacity = 0
+        
+        // Animate the frosting effect
+        withAnimation(.easeIn(duration: 1.2)) {
+            loseOverlayOpacity = 0.9
         }
     }
     
@@ -244,7 +390,38 @@ struct ContentView: View {
         
         if remainingAtoms.isEmpty {
             completeGame()
+        } else {
+            // Check if there are any legal moves left
+            if !hasLegalMoves() {
+                loseGame()
+            }
         }
+    }
+    
+    private func hasLegalMoves() -> Bool {
+        // Get all selectable cells with atoms
+        let selectableCells = cells.filter { 
+            $0.selectable && !$0.contains.isEmpty && $0.contains != "ph" 
+        }
+        
+        // Check if gold is selectable (gold can be taken alone)
+        if selectableCells.contains(where: { $0.contains == "gold" }) {
+            return true
+        }
+        
+        // Check all pairs of selectable cells for valid matches
+        for i in 0..<selectableCells.count {
+            for j in (i+1)..<selectableCells.count {
+                let atom1 = selectableCells[i].contains
+                let atom2 = selectableCells[j].contains
+                
+                if canMatch(atom1, atom2) {
+                    return true
+                }
+            }
+        }
+        
+        return false
     }
     
     private func handleCellTap(_ cellId: Int) {

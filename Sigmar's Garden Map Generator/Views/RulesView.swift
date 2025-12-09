@@ -26,10 +26,10 @@ struct RulesView: View {
                 // Cardinal Elements
                 Section {
                     HStack(spacing: 12) {
-                        ElementIcon("FireIcon", color: .red)
-                        ElementIcon("WaterIcon", color: .blue)
-                        ElementIcon("AirIcon", color: .cyan)
-                        ElementIcon("EarthIcon", color: .green)
+                        RulesTileIcon(atomType: "fire")
+                        RulesTileIcon(atomType: "water")
+                        RulesTileIcon(atomType: "air")
+                        RulesTileIcon(atomType: "earth")
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
@@ -41,14 +41,14 @@ struct RulesView: View {
                 
                 // Salt
                 Section {
-                    HStack(spacing: 12) {
-                        ElementIcon("SaltIcon", color: .gray)
+                    HStack(spacing: 8) {
+                        RulesTileIcon(atomType: "salt")
                         Text("+")
                             .foregroundStyle(.secondary)
-                        ElementIcon("FireIcon", color: .red)
+                        RulesTileIcon(atomType: "fire")
                         Text("or")
                             .foregroundStyle(.secondary)
-                        ElementIcon("WaterIcon", color: .blue)
+                        RulesTileIcon(atomType: "water")
                         Text("...")
                             .foregroundStyle(.secondary)
                     }
@@ -63,10 +63,10 @@ struct RulesView: View {
                 // Life & Death
                 Section {
                     HStack(spacing: 12) {
-                        ElementIcon("LifeIcon", color: .green)
+                        RulesTileIcon(atomType: "vitae")
                         Text("+")
                             .foregroundStyle(.secondary)
-                        ElementIcon("DeathIcon", color: .purple)
+                        RulesTileIcon(atomType: "mors")
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
@@ -78,37 +78,37 @@ struct RulesView: View {
                 
                 // Metals
                 Section {
-                    HStack(spacing: 8) {
-                        ElementIcon("QuicksilverIcon", color: .gray)
+                    HStack(spacing: 6) {
+                        RulesTileIcon(atomType: "quicksilver")
                         Text("+")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        ElementIcon("LeadIcon", color: .gray)
+                        RulesTileIcon(atomType: "lead")
                         Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        ElementIcon("TinIcon", color: .gray)
+                        RulesTileIcon(atomType: "tin")
                         Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        ElementIcon("IronIcon", color: .gray)
+                        RulesTileIcon(atomType: "iron")
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 4)
                     
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        ElementIcon("CopperIcon", color: .orange)
+                        RulesTileIcon(atomType: "copper")
                         Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        ElementIcon("SilverIcon", color: .gray)
+                        RulesTileIcon(atomType: "silver")
                         Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        ElementIcon("GoldIcon", color: .yellow)
+                        RulesTileIcon(atomType: "gold")
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 4)
@@ -121,7 +121,7 @@ struct RulesView: View {
                 // Gold
                 Section {
                     HStack {
-                        ElementIcon("GoldIcon", color: .yellow)
+                        RulesTileIcon(atomType: "gold")
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
@@ -138,22 +138,94 @@ struct RulesView: View {
     }
 }
 
-struct ElementIcon: View {
-    let name: String
-    let color: Color
-    
-    init(_ name: String, color: Color) {
-        self.name = name
-        self.color = color
-    }
+// MARK: - Rules Tile Icon (matches game appearance)
+
+struct RulesTileIcon: View {
+    let atomType: String
+    private let size: CGFloat = 36
     
     var body: some View {
-        Image(name)
+        ZStack {
+            // Hexagon background
+            HexagonView()
+                .fill(backgroundColor)
+            
+            // Hexagon stroke
+            HexagonView()
+                .stroke(Color.black.opacity(0.3), lineWidth: 1)
+            
+            // Icon
+            Image(iconName)
+                .renderingMode(.template)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: 32, height: 32)
-            .padding(6)
-            .background(color.opacity(0.2), in: Circle())
+                .foregroundColor(iconColor)
+                .frame(width: size * 0.55, height: size * 0.55)
+        }
+        .frame(width: size, height: size)
+    }
+    
+    private var iconName: String {
+        switch atomType {
+        case "water": return "WaterIcon"
+        case "fire": return "FireIcon"
+        case "air": return "AirIcon"
+        case "earth": return "EarthIcon"
+        case "salt": return "SaltIcon"
+        case "quintessence": return "GoldIcon"
+        case "quicksilver": return "QuicksilverIcon"
+        case "lead": return "LeadIcon"
+        case "tin": return "TinIcon"
+        case "iron": return "IronIcon"
+        case "copper": return "CopperIcon"
+        case "silver": return "SilverIcon"
+        case "gold": return "GoldIcon"
+        case "mors": return "DeathIcon"
+        case "vitae": return "LifeIcon"
+        default: return "GoldIcon"
+        }
+    }
+    
+    private var backgroundColor: Color {
+        switch atomType {
+        case "water": return Color(red: 0.2, green: 0.4, blue: 0.9)
+        case "fire": return Color(red: 0.9, green: 0.3, blue: 0.2)
+        case "air": return Color(red: 0.7, green: 0.9, blue: 1.0)
+        case "earth": return .green
+        case "salt": return .white
+        case "quintessence": return Color(red: 0.6, green: 0.3, blue: 0.8)
+        case "quicksilver": return .white
+        case "lead": return Color(red: 0.1, green: 0.1, blue: 0.1)
+        case "tin": return Color(red: 0.1, green: 0.1, blue: 0.1)
+        case "iron": return Color(red: 0.1, green: 0.1, blue: 0.1)
+        case "copper": return Color(red: 0.1, green: 0.1, blue: 0.1)
+        case "silver": return Color(red: 0.1, green: 0.1, blue: 0.1)
+        case "gold": return Color(red: 0.1, green: 0.1, blue: 0.1)
+        case "mors": return Color(red: 0.3, green: 0.2, blue: 0.2)
+        case "vitae": return Color(red: 0.3, green: 0.2, blue: 0.2)
+        default: return .gray
+        }
+    }
+    
+    private var iconColor: Color {
+        switch atomType {
+        case "water": return .white
+        case "fire": return .white
+        case "air": return .white
+        case "earth": return .white
+        case "salt": return .blue
+        case "quintessence": return .white
+        case "quicksilver": return .orange
+        case "lead": return .white
+        case "tin": return .cyan
+        case "iron": return .red
+        case "copper": return .orange
+        case "silver": return .gray
+        case "gold": return .yellow
+        case "mors": return .purple
+        case "vitae": return .white
+        default: return .black
+        }
     }
 }
 

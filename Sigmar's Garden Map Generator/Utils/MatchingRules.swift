@@ -41,7 +41,11 @@ struct MatchingRules {
         // Metals match with quicksilver (any metal can match with quicksilver)
         // But selectability is controlled by updateCellSelectability - only the first available metal is selectable
         if type1 == .metal && type2 == .metal {
-            // Quicksilver matches with any metal (selectability ensures only correct metal is available)
+            // Quicksilver can only match with OTHER metals, not with itself
+            if atom1 == "quicksilver" && atom2 == "quicksilver" {
+                return false
+            }
+            // Quicksilver matches with any other metal
             if atom1 == "quicksilver" || atom2 == "quicksilver" {
                 return true
             }

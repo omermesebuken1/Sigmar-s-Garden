@@ -25,7 +25,8 @@ struct Sigmar_s_Garden_Map_GeneratorApp: App {
                 Tab("Rules", systemImage: "book.fill", value: "rules") {
                     RulesView()
                 }
-            }
+            }.tint(.green)
+            
         }
     }
 }

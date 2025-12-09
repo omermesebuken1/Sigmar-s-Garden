@@ -10,32 +10,31 @@ import Foundation
 class MapGenerator {
     private var cells: [Cell]
     private var typesGenerated: [Int]
-    private var genSettings: GenSettings
     private var phSelectable: [Int]
+    private let difficulty: Difficulty
+    private let gridSize: Int
     
-    struct GenSettings {
-        var salted: [Int] = []
+    private var gengoal: [Int] {
+        return difficulty.tileGoals
     }
     
-    let gengoal = [8, 8, 8, 8, 4, 0, 5, 1, 1, 1, 1, 1, 1, 4, 4]
-    
-    init(cells: [Cell]) {
+    init(cells: [Cell], difficulty: Difficulty = .hard) {
         self.cells = cells
+        self.difficulty = difficulty
+        self.gridSize = difficulty.gridSize
         self.typesGenerated = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
-        self.genSettings = GenSettings()
         self.phSelectable = []
     }
     
     func generateBoard() -> [Cell] {
-        let map = MapTemplate.randomMap()
+        let map = MapTemplate.randomMap(for: difficulty)
+        let totalCells = gridSize * gridSize
         
         typesGenerated = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]
-        genSettings = GenSettings()
-        genSettings.salted = [Int.random(in: 0..<5), Int.random(in: 0..<5)]
         
         // Mark placeholder cells from map template
-        for i in 0..<121 {
-            if map[map.index(map.startIndex, offsetBy: i)] == "X" {
+        for i in 0..<totalCells {
+            if i < map.count, map[map.index(map.startIndex, offsetBy: i)] == "X" {
                 cells[i].contains = "ph"
             } else {
                 cells[i].contains = ""
@@ -43,15 +42,34 @@ class MapGenerator {
         }
         
         // Place gold in center
-        let centerIndex = Int(GridCalculator.gridSize * GridCalculator.gridSize / 2)
+        let centerIndex = totalCells / 2
         cells[centerIndex].contains = "gold"
         
         updatePlaceholderCells()
         
         // Generate pairs until no more placeholders
-        while phSelectable.count > 0 {
+        // Safety limit to prevent infinite loops
+        var iterations = 0
+        let maxIterations = 500
+        
+        while phSelectable.count > 0 && iterations < maxIterations {
+            let previousCount = phSelectable.count
             generatePair()
             updatePlaceholderCells()
+            
+            // If no progress was made, break to avoid infinite loop
+            if phSelectable.count == previousCount {
+                iterations += 1
+            } else {
+                iterations = 0
+            }
+        }
+        
+        // Clear any remaining placeholders
+        for i in 0..<cells.count {
+            if cells[i].contains == "ph" {
+                cells[i].contains = ""
+            }
         }
         
         return cells
@@ -60,18 +78,22 @@ class MapGenerator {
     private func generatePair() {
         var pairType: [String] = []
         
+        // Calculate total goals from difficulty
+        // Include salt (index 4) with cardinal elements so they're generated as pairs
+        let cardinalGoal = gengoal[0] + gengoal[1] + gengoal[2] + gengoal[3] + gengoal[4]
+        let metalGoal = gengoal[6] + gengoal[7] + gengoal[8] + gengoal[9] + gengoal[10] + gengoal[11]
+        let mvGoal = gengoal[13] + gengoal[14]
+        
         // Determine available pair types
-        if typesGenerated[0] + typesGenerated[1] + typesGenerated[2] + typesGenerated[3] < 32 {
+        // Cardinal now includes salt (indices 0-4)
+        if typesGenerated[0] + typesGenerated[1] + typesGenerated[2] + typesGenerated[3] + typesGenerated[4] < cardinalGoal {
             pairType.append("cardinal")
         }
-        if typesGenerated[6] + typesGenerated[7] + typesGenerated[8] + typesGenerated[9] + typesGenerated[10] + typesGenerated[11] < 10 {
+        if typesGenerated[6] + typesGenerated[7] + typesGenerated[8] + typesGenerated[9] + typesGenerated[10] + typesGenerated[11] < metalGoal {
             pairType.append("metal")
         }
-        if typesGenerated[13] + typesGenerated[14] < 8 {
+        if typesGenerated[13] + typesGenerated[14] < mvGoal {
             pairType.append("mv")
-        }
-        if typesGenerated[4] < 4 {
-            pairType.append("salted")
         }
         
         guard !pairType.isEmpty else { return }
@@ -82,19 +104,16 @@ class MapGenerator {
         
         switch selectedType {
         case "cardinal":
+            // Include salt (index 4) - all cardinal elements pair with themselves
             var picks: [Int] = []
-            for i in 0..<4 {
-                if typesGenerated[i] < 8 {
+            for i in 0..<5 {  // 0-4: water, fire, air, earth, salt
+                if typesGenerated[i] < gengoal[i] {
                     picks.append(i)
                 }
             }
             guard !picks.isEmpty else { return }
             atom1 = picks[Int.random(in: 0..<picks.count)]
             atom2 = atom1
-            
-        case "salted":
-            atom1 = genSettings.salted[Int.random(in: 0..<genSettings.salted.count)]
-            atom2 = 4 // salt
             
         case "mv":
             atom1 = 13 // mors
@@ -126,13 +145,6 @@ class MapGenerator {
         cells[id2].contains = AtomType.names[atom2]
         typesGenerated[atom1] += 1
         typesGenerated[atom2] += 1
-        
-        // Update salted settings
-        if selectedType == "salted" && typesGenerated[atom1] % 2 == 0 {
-            if let index = genSettings.salted.firstIndex(of: atom1) {
-                genSettings.salted.remove(at: index)
-            }
-        }
     }
     
     private func updatePlaceholderCells() {

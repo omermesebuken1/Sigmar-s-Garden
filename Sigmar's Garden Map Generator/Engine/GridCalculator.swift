@@ -8,24 +8,33 @@
 import Foundation
 
 class GridCalculator {
-    static let gridSize = 11 // must be odd
+    let gridSize: Int
     
-    static var maxZ: Double {
+    private var maxZ: Double {
         return Double(gridSize) * 1.5 - 0.5
     }
     
-    static var minZ: Double {
+    private var minZ: Double {
         return Double(gridSize) * 0.5 - 1.5
     }
     
-    static func getCellByCoords(x: Int, y: Int) -> Int {
+    init(difficulty: Difficulty) {
+        self.gridSize = difficulty.gridSize
+    }
+    
+    /// Legacy initializer for backward compatibility
+    init(gridSize: Int = 11) {
+        self.gridSize = gridSize
+    }
+    
+    func getCellByCoords(x: Int, y: Int) -> Int {
         if x >= 0 && Double(x + y) > minZ && y >= 0 && x < gridSize && Double(x + y) < maxZ && y < gridSize {
             return y * gridSize + x
         }
         return -1
     }
     
-    static func createCells() -> [Cell] {
+    func createCells() -> [Cell] {
         var cells: [Cell] = []
         
         for y in 0..<gridSize {
