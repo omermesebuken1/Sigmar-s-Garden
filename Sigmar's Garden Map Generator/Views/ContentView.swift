@@ -20,7 +20,7 @@ struct ContentView: View {
     @State private var isNewHighScore = false
     @State private var showRestartConfirmation = false
     @State private var gameStartTime: Date?
-    @State private var selectedDifficulty: Difficulty = .hard
+    @State private var selectedDifficulty: Difficulty = .easy
     
     @StateObject private var gameCenterManager = GameCenterManager.shared
     
@@ -76,7 +76,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     // Difficulty Picker (only visible when not playing)
                     if !isPlaying && !isCompleted && !isGameLost {
-                        Picker("Zorluk", selection: $selectedDifficulty) {
+                        Picker("Difficulty", selection: $selectedDifficulty) {
                             ForEach(Difficulty.allCases) { difficulty in
                                 Text(difficulty.displayName).tag(difficulty)
                             }

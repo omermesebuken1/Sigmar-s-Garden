@@ -24,9 +24,9 @@ enum Difficulty: String, CaseIterable, Identifiable {
     
     var displayName: String {
         switch self {
-        case .easy: return "Kolay"
-        case .medium: return "Orta"
-        case .hard: return "Zor"
+        case .easy: return "Easy"
+        case .medium: return "Medium"
+        case .hard: return "Hard"
         }
     }
     

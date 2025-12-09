@@ -8,7 +8,7 @@ import GameKit
 
 struct LeaderboardsView: View {
     @StateObject private var gameCenterManager = GameCenterManager.shared
-    @State private var selectedDifficulty: Difficulty = .hard
+    @State private var selectedDifficulty: Difficulty = .easy
     @State private var bestTimeEntries: [GKLeaderboard.Entry] = []
     @State private var solveCountEntries: [GKLeaderboard.Entry] = []
     @State private var localBestTimeEntry: GKLeaderboard.Entry?
@@ -43,7 +43,7 @@ struct LeaderboardsView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Difficulty Picker
-                Picker("Zorluk", selection: $selectedDifficulty) {
+                Picker("Difficulty", selection: $selectedDifficulty) {
                     ForEach(Difficulty.allCases) { difficulty in
                         Text(difficulty.displayName).tag(difficulty)
                     }
@@ -66,10 +66,10 @@ struct LeaderboardsView: View {
                             .font(.system(size: 60))
                             .foregroundStyle(.secondary)
                         
-                        Text("Game Center'a Bağlı Değil")
+                        Text("Not Connected to Game Center")
                             .font(.title2.bold())
                         
-                        Text("Liderlik tablolarını görmek için Game Center'a giriş yapın.")
+                        Text("Sign in to Game Center to view leaderboards.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -83,7 +83,7 @@ struct LeaderboardsView: View {
                 } else if isLoading {
                     VStack {
                         Spacer()
-                        ProgressView("Yükleniyor...")
+                        ProgressView("Loading...")
                         Spacer()
                     }
                 } else {
@@ -94,7 +94,7 @@ struct LeaderboardsView: View {
                             
                             // Best Time Leaderboard
                             leaderboardSection(
-                                title: "En Hızlı Süre",
+                                title: "Best Time",
                                 icon: "timer",
                                 entries: bestTimeEntries,
                                 type: .bestTime
@@ -102,7 +102,7 @@ struct LeaderboardsView: View {
                             
                             // Solve Count Leaderboard
                             leaderboardSection(
-                                title: "En Çok Çözen",
+                                title: "Most Solves",
                                 icon: "trophy.fill",
                                 entries: solveCountEntries,
                                 type: .solveCount
@@ -112,7 +112,7 @@ struct LeaderboardsView: View {
                     }
                 }
             }
-            .navigationTitle("Sıralama")
+            .navigationTitle("Ranks")
             .toolbar {
                 if gameCenterManager.isAuthenticated {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -139,7 +139,7 @@ struct LeaderboardsView: View {
             HStack {
                 Image(systemName: "person.fill")
                     .foregroundStyle(.blue)
-                Text("Senin İstatistiklerin")
+                Text("Your Stats")
                     .font(.headline)
                 Spacer()
             }
@@ -147,7 +147,7 @@ struct LeaderboardsView: View {
             HStack(spacing: 16) {
                 // Best Time Card
                 StatCard(
-                    title: "En İyi Süre",
+                    title: "Best Time",
                     value: localBestTime > 0 ? formatTime(localBestTime) : "--:--.-",
                     icon: "timer",
                     color: .orange
@@ -155,7 +155,7 @@ struct LeaderboardsView: View {
                 
                 // Solve Count Card
                 StatCard(
-                    title: "Toplam Çözüm",
+                    title: "Total Solves",
                     value: "\(localSolveCount)",
                     icon: "checkmark.circle.fill",
                     color: .green
@@ -165,7 +165,7 @@ struct LeaderboardsView: View {
             // Global rank if available
             if let timeEntry = localBestTimeEntry {
                 HStack {
-                    Text("Süre Sıralaması:")
+                    Text("Time Rank:")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("#\(timeEntry.rank)")
@@ -177,7 +177,7 @@ struct LeaderboardsView: View {
             
             if let countEntry = localSolveCountEntry {
                 HStack {
-                    Text("Çözüm Sıralaması:")
+                    Text("Solve Rank:")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("#\(countEntry.rank)")
@@ -195,20 +195,20 @@ struct LeaderboardsView: View {
     private var localStatsSection: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("Yerel İstatistikler")
+                Text("Local Stats")
                     .font(.headline)
             }
             
             HStack(spacing: 16) {
                 StatCard(
-                    title: "En İyi Süre",
+                    title: "Best Time",
                     value: localBestTime > 0 ? formatTime(localBestTime) : "--:--.-",
                     icon: "timer",
                     color: .orange
                 )
                 
                 StatCard(
-                    title: "Toplam Çözüm",
+                    title: "Total Solves",
                     value: "\(localSolveCount)",
                     icon: "checkmark.circle.fill",
                     color: .green
@@ -237,14 +237,14 @@ struct LeaderboardsView: View {
                 Button {
                     gameCenterManager.showLeaderboard(for: selectedDifficulty, type: type)
                 } label: {
-                    Text("Tümü")
+                    Text("See All")
                         .font(.caption)
                         .foregroundStyle(.blue)
                 }
             }
             
             if entries.isEmpty {
-                Text("Henüz veri yok")
+                Text("No data yet")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 100)
