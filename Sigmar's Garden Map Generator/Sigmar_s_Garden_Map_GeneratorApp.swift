@@ -10,23 +10,30 @@ import SwiftUI
 @main
 struct Sigmar_s_Garden_Map_GeneratorApp: App {
     @State private var selectedTab = "play"
+    @AppStorage("tutorialCompleted") private var tutorialCompleted: Bool = false
     
     var body: some Scene {
         WindowGroup {
-            TabView(selection: $selectedTab) {
-                Tab("Ranks", systemImage: "chart.bar.fill", value: "ranks") {
-                    LeaderboardsView()
+            if !tutorialCompleted {
+                // Show tutorial for first-time users
+                TutorialView(tutorialCompleted: $tutorialCompleted)
+            } else {
+                // Normal app with tabs
+                TabView(selection: $selectedTab) {
+                    Tab("Ranks", systemImage: "chart.bar.fill", value: "ranks") {
+                        LeaderboardsView()
+                    }
+                    
+                    Tab("Play", systemImage: "hexagon.fill", value: "play") {
+                        ContentView()
+                    }
+                    
+                    Tab("Rules", systemImage: "book.fill", value: "rules") {
+                        RulesView()
+                    }
                 }
-                
-                Tab("Play", systemImage: "hexagon.fill", value: "play") {
-                    ContentView()
-                }
-                
-                Tab("Rules", systemImage: "book.fill", value: "rules") {
-                    RulesView()
-                }
-            }.tint(.green)
-            
+                .tint(.green)
+            }
         }
     }
 }
