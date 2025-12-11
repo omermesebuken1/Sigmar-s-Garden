@@ -26,6 +26,7 @@ struct ContentView: View {
     @State private var cachedCells: [Difficulty: [Cell]] = [:]
     
     @StateObject private var gameCenterManager = GameCenterManager.shared
+    @StateObject private var streakManager = StreakManager.shared
     
     @Namespace private var buttonNamespace
     @State private var currentTime: TimeInterval = 0
@@ -358,6 +359,12 @@ struct ContentView: View {
         
         // Increment solve count
         incrementSolveCount()
+        
+        // Record time for average calculation
+        streakManager.recordTime(finalTime, for: selectedDifficulty)
+        
+        // Record streak for the current difficulty
+        streakManager.recordPlay(for: selectedDifficulty)
         
         // Check for high score
         if bestTime == 0 || finalTime < bestTime {

@@ -20,12 +20,16 @@ struct Sigmar_s_Garden_Map_GeneratorApp: App {
             } else {
                 // Normal app with tabs
                 TabView(selection: $selectedTab) {
-                    Tab("Ranks", systemImage: "chart.bar.fill", value: "ranks") {
-                        LeaderboardsView()
+                    Tab("Daily", systemImage: "calendar.circle.fill", value: "daily") {
+                        DailyChallengeView()
                     }
                     
                     Tab("Play", systemImage: "hexagon.fill", value: "play") {
                         ContentView()
+                    }
+                    
+                    Tab("Stats", systemImage: "chart.bar.fill", value: "stats") {
+                        StatsView()
                     }
                     
                     Tab("Rules", systemImage: "book.fill", value: "rules") {

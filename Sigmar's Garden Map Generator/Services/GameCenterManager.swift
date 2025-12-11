@@ -90,6 +90,75 @@ class GameCenterManager: ObservableObject {
         }
     }
     
+    /// Submit daily streak score and check achievements
+    func submitDailyStreak(_ streak: Int) async {
+        guard isAuthenticated else {
+            print("Not authenticated to Game Center")
+            return
+        }
+        
+        // Submit to leaderboard
+        do {
+            try await GKLeaderboard.submitScore(
+                streak,
+                context: 0,
+                player: GKLocalPlayer.local,
+                leaderboardIDs: [LeaderboardID.dailyStreak]
+            )
+            print("Submitted daily streak \(streak)")
+        } catch {
+            print("Failed to submit daily streak: \(error.localizedDescription)")
+        }
+        
+        // Check streak achievements
+        await checkStreakAchievements(streak: streak)
+    }
+    
+    /// Check and report daily streak achievements
+    func checkStreakAchievements(streak: Int) async {
+        // 3 days
+        if streak >= 3 {
+            await reportAchievement(AchievementID.streak3Days)
+        } else {
+            await reportAchievement(AchievementID.streak3Days, percentComplete: Double(streak) / 3.0 * 100.0)
+        }
+        
+        // 7 days (1 week)
+        if streak >= 7 {
+            await reportAchievement(AchievementID.streak7Days)
+        } else {
+            await reportAchievement(AchievementID.streak7Days, percentComplete: Double(streak) / 7.0 * 100.0)
+        }
+        
+        // 30 days (1 month)
+        if streak >= 30 {
+            await reportAchievement(AchievementID.streak30Days)
+        } else {
+            await reportAchievement(AchievementID.streak30Days, percentComplete: Double(streak) / 30.0 * 100.0)
+        }
+        
+        // 90 days (3 months)
+        if streak >= 90 {
+            await reportAchievement(AchievementID.streak90Days)
+        } else {
+            await reportAchievement(AchievementID.streak90Days, percentComplete: Double(streak) / 90.0 * 100.0)
+        }
+        
+        // 180 days (6 months)
+        if streak >= 180 {
+            await reportAchievement(AchievementID.streak180Days)
+        } else {
+            await reportAchievement(AchievementID.streak180Days, percentComplete: Double(streak) / 180.0 * 100.0)
+        }
+        
+        // 365 days (1 year)
+        if streak >= 365 {
+            await reportAchievement(AchievementID.streak365Days)
+        } else {
+            await reportAchievement(AchievementID.streak365Days, percentComplete: Double(streak) / 365.0 * 100.0)
+        }
+    }
+    
     // MARK: - Achievements
     
     /// Report achievement progress (0.0 to 100.0)
@@ -296,6 +365,20 @@ struct AchievementID {
     static let mediumSpeedrun = "garden.medium_speedrun"
     static let hardSpeedrun = "garden.hard_speedrun"
     static let perfectionist = "garden.perfectionist"
+    
+    // Daily streak achievements
+    static let streak3Days = "garden.streak_3days"       // 3 days
+    static let streak7Days = "garden.streak_7days"       // 7 days (1 week)
+    static let streak30Days = "garden.streak_30days"     // 30 days (1 month)
+    static let streak90Days = "garden.streak_90days"     // 90 days (3 months)
+    static let streak180Days = "garden.streak_180days"   // 180 days (6 months)
+    static let streak365Days = "garden.streak_365days"   // 365 days (1 year)
+}
+
+// MARK: - Leaderboard IDs (Daily)
+
+struct LeaderboardID {
+    static let dailyStreak = "garden.daily_streak"
 }
 
 // MARK: - Game Center Delegate Handler
