@@ -20,7 +20,7 @@ struct Sigmar_s_Garden_Map_GeneratorApp: App {
             } else {
                 // Normal app with tabs
                 TabView(selection: $selectedTab) {
-                    Tab("Daily", systemImage: "calendar.circle.fill", value: "daily") {
+                    Tab("Daily", systemImage: "calendar", value: "daily") {
                         DailyChallengeView()
                     }
                     

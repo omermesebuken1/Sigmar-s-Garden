@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Cell: Identifiable {
+struct Cell: Identifiable, Codable, Equatable {
     let id: Int
     let x: Int
     let y: Int
@@ -17,7 +17,7 @@ struct Cell: Identifiable {
     var selectable: Bool
     let neighbors: Neighbors
     
-    struct Neighbors {
+    struct Neighbors: Codable, Equatable {
         let yn: Int // y-1 (north)
         let zn: Int // x+1, y-1 (northeast)
         let xp: Int // x+1 (east)

@@ -22,6 +22,14 @@ struct StatsView: View {
     @AppStorage("solveCount_medium") private var solveCountMedium: Int = 0
     @AppStorage("solveCount_hard") private var solveCountHard: Int = 0
     
+    // World ranks from Game Center
+    @State private var easyTimeRank: Int?
+    @State private var mediumTimeRank: Int?
+    @State private var hardTimeRank: Int?
+    @State private var easySolveRank: Int?
+    @State private var mediumSolveRank: Int?
+    @State private var hardSolveRank: Int?
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -42,6 +50,32 @@ struct StatsView: View {
         .onAppear {
             gameCenterManager.authenticate()
         }
+        .task {
+            await loadRanks()
+        }
+    }
+    
+    // MARK: - Load Ranks
+    
+    private func loadRanks() async {
+        guard gameCenterManager.isAuthenticated else { return }
+        
+        // Load all ranks in parallel
+        async let easyTime = gameCenterManager.loadLocalPlayerEntry(for: .easy, type: .bestTime)
+        async let mediumTime = gameCenterManager.loadLocalPlayerEntry(for: .medium, type: .bestTime)
+        async let hardTime = gameCenterManager.loadLocalPlayerEntry(for: .hard, type: .bestTime)
+        async let easySolve = gameCenterManager.loadLocalPlayerEntry(for: .easy, type: .solveCount)
+        async let mediumSolve = gameCenterManager.loadLocalPlayerEntry(for: .medium, type: .solveCount)
+        async let hardSolve = gameCenterManager.loadLocalPlayerEntry(for: .hard, type: .solveCount)
+        
+        let results = await (easyTime, mediumTime, hardTime, easySolve, mediumSolve, hardSolve)
+        
+        easyTimeRank = results.0?.rank
+        mediumTimeRank = results.1?.rank
+        hardTimeRank = results.2?.rank
+        easySolveRank = results.3?.rank
+        mediumSolveRank = results.4?.rank
+        hardSolveRank = results.5?.rank
     }
     
     // MARK: - Daily Streak Section
@@ -136,7 +170,9 @@ struct StatsView: View {
                     color: .green,
                     bestTime: bestTimeEasy,
                     solveCount: solveCountEasy,
-                    avgTime: streakManager.getAverageTime(for: .easy)
+                    avgTime: streakManager.getAverageTime(for: .easy),
+                    timeRank: easyTimeRank,
+                    solveRank: easySolveRank
                 )
                 
                 difficultyColumn(
@@ -144,7 +180,9 @@ struct StatsView: View {
                     color: .orange,
                     bestTime: bestTimeMedium,
                     solveCount: solveCountMedium,
-                    avgTime: streakManager.getAverageTime(for: .medium)
+                    avgTime: streakManager.getAverageTime(for: .medium),
+                    timeRank: mediumTimeRank,
+                    solveRank: mediumSolveRank
                 )
                 
                 difficultyColumn(
@@ -152,7 +190,9 @@ struct StatsView: View {
                     color: .red,
                     bestTime: bestTimeHard,
                     solveCount: solveCountHard,
-                    avgTime: streakManager.getAverageTime(for: .hard)
+                    avgTime: streakManager.getAverageTime(for: .hard),
+                    timeRank: hardTimeRank,
+                    solveRank: hardSolveRank
                 )
             }
         }
@@ -166,7 +206,9 @@ struct StatsView: View {
         color: Color,
         bestTime: Double,
         solveCount: Int,
-        avgTime: TimeInterval
+        avgTime: TimeInterval,
+        timeRank: Int?,
+        solveRank: Int?
     ) -> some View {
         VStack(spacing: 12) {
             // Title
@@ -177,22 +219,32 @@ struct StatsView: View {
             Divider()
             
             // Best Time
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text("Best")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text(bestTime > 0 ? formatTime(bestTime) : "--:--")
                     .font(.system(.caption, design: .monospaced))
                     .fontWeight(.semibold)
+                if let rank = timeRank {
+                    Text("#\(rank)")
+                        .font(.caption2)
+                        .foregroundStyle(color)
+                }
             }
             
             // Solve Count
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text("Solves")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text("\(solveCount)")
                     .font(.callout.bold())
+                if let rank = solveRank {
+                    Text("#\(rank)")
+                        .font(.caption2)
+                        .foregroundStyle(color)
+                }
             }
             
             // Average Time
@@ -257,4 +309,3 @@ struct StatsView: View {
 #Preview {
     StatsView()
 }
-

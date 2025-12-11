@@ -3,7 +3,7 @@
 //  Sigmar's Garden Map Generator
 //
 //  Daily challenge mode where everyone solves the same puzzle
-//  No timer - just complete it!
+//  No timer - state persists across tab switches and app restarts
 //
 
 import SwiftUI
@@ -27,6 +27,11 @@ struct DailyChallengeView: View {
     
     let countdownTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
+    // State persistence keys
+    private let cellsKey = "dailyGameCells"
+    private let isPlayingKey = "dailyGameIsPlaying"
+    private let gameStateDate = "dailyGameStateDate"
+    
     private var hasCompletedToday: Bool {
         DailyPuzzleGenerator.hasCompletedToday()
     }
@@ -38,8 +43,10 @@ struct DailyChallengeView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header
-                    dailyHeader
+                    // Header (only when not playing)
+                    if !isPlaying {
+                        dailyHeader
+                    }
                     
                     if isLoading {
                         // Loading state
@@ -58,45 +65,50 @@ struct DailyChallengeView: View {
                         // Just completed - show completion screen
                         completedTodayView
                     } else {
-                        // Game content
+                        // Game content - matches ContentView layout
                         if isPlaying && !cells.isEmpty {
                             AtomCounterView(cells: cells)
                                 .padding(.top, 8)
                         }
                         
                         Spacer()
-                        
-                        // Game board
-                        if !cells.isEmpty {
-                            GameBoardView(
-                                cells: cells,
-                                selectedCells: selectedCells,
-                                isGameActive: isPlaying,
-                                gridSize: DailyPuzzleGenerator.dailyDifficulty.gridSize,
-                                onCellTapped: handleCellTap,
-                                availableSize: CGSize(
-                                    width: geometry.size.width,
-                                    height: geometry.size.height * 0.55
-                                )
-                            )
-                        }
-                        
+                    }
+                }
+                
+                // Game Board - same layout as ContentView Hard mode
+                if !isLoading && !hasCompletedToday && !isCompleted && !cells.isEmpty {
+                    GameBoardView(
+                        cells: cells,
+                        selectedCells: selectedCells,
+                        isGameActive: isPlaying,
+                        gridSize: DailyPuzzleGenerator.dailyDifficulty.gridSize,
+                        onCellTapped: handleCellTap,
+                        availableSize: CGSize(
+                            width: geometry.size.width,
+                            height: geometry.size.height - 150
+                        )
+                    )
+                    .offset(y: -50)
+                }
+                
+                // Bottom Controls - only Start button, no restart during play
+                if !isLoading && !isCompleted && !isGameLost && !hasCompletedToday {
+                    VStack {
                         Spacer()
                         
-                        // Start button
-                        if !isPlaying && !isCompleted && !isGameLost && !hasCompletedToday {
+                        // Start button - only visible when not playing
+                        if !isPlaying {
                             Button {
                                 startGame()
                             } label: {
-                                Text("Start Daily Challenge")
+                                Text("Start")
                                     .font(.headline)
-                                    .frame(maxWidth: .infinity)
+                                    .frame(width: 150)
                                     .padding(.vertical, 16)
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.orange)
-                            .padding(.horizontal, 40)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 100)
                         }
                     }
                 }
@@ -108,13 +120,63 @@ struct DailyChallengeView: View {
             }
         }
         .task {
-            await loadDailyPuzzle()
+            await loadGameState()
             remainingTime = DailyPuzzleGenerator.timeUntilNextPuzzle()
             streakManager.checkAndApplyFreezeIfNeeded()
         }
         .onReceive(countdownTimer) { _ in
             remainingTime = DailyPuzzleGenerator.timeUntilNextPuzzle()
         }
+        .onChange(of: cells) { _, _ in
+            saveGameState()
+        }
+        .onChange(of: isPlaying) { _, _ in
+            saveGameState()
+        }
+    }
+    
+    // MARK: - State Persistence
+    
+    private func loadGameState() async {
+        // Check if saved state is from today
+        let savedDate = UserDefaults.standard.double(forKey: gameStateDate)
+        let isFromToday = savedDate > 0 && Calendar.current.isDateInToday(Date(timeIntervalSince1970: savedDate))
+        
+        // Load saved state if from today
+        if isFromToday {
+            if let cellsData = UserDefaults.standard.data(forKey: cellsKey),
+               let savedCells = try? JSONDecoder().decode([Cell].self, from: cellsData) {
+                cells = savedCells
+                isPlaying = UserDefaults.standard.bool(forKey: isPlayingKey)
+                updateCellSelectability()
+                isLoading = false
+                return
+            }
+        }
+        
+        // Otherwise load fresh puzzle
+        await loadDailyPuzzle()
+    }
+    
+    private func saveGameState() {
+        guard !cells.isEmpty else { return }
+        
+        // Save cells
+        if let cellsData = try? JSONEncoder().encode(cells) {
+            UserDefaults.standard.set(cellsData, forKey: cellsKey)
+        }
+        
+        // Save playing state
+        UserDefaults.standard.set(isPlaying, forKey: isPlayingKey)
+        
+        // Save date
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: gameStateDate)
+    }
+    
+    private func clearGameState() {
+        UserDefaults.standard.removeObject(forKey: cellsKey)
+        UserDefaults.standard.removeObject(forKey: isPlayingKey)
+        UserDefaults.standard.removeObject(forKey: gameStateDate)
     }
     
     // MARK: - Subviews
@@ -336,6 +398,9 @@ struct DailyChallengeView: View {
         isCompleted = true
         winOverlayOpacity = 0
         
+        // Clear saved state
+        clearGameState()
+        
         // Mark daily as completed
         DailyPuzzleGenerator.markCompleted()
         
@@ -353,6 +418,9 @@ struct DailyChallengeView: View {
         isPlaying = false
         isGameLost = true
         loseOverlayOpacity = 0
+        
+        // Clear saved state
+        clearGameState()
         
         // Mark as attempted so they can't retry
         DailyPuzzleGenerator.markCompleted()
