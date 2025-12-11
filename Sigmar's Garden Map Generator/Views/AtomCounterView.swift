@@ -3,7 +3,6 @@
 //  Sigmar's Garden Map Generator
 //
 //  Shows remaining atom counts with imbalance warnings
-//
 
 import SwiftUI
 

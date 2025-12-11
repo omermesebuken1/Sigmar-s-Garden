@@ -112,7 +112,7 @@ struct LeaderboardsView: View {
                     }
                 }
             }
-            .navigationTitle("Ranks")
+                .navigationTitle("Ranks")
             .toolbar {
                 if gameCenterManager.isAuthenticated {
                     ToolbarItem(placement: .topBarTrailing) {

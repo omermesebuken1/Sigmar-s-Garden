@@ -126,9 +126,7 @@ struct RulesView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
                     
-                    Text("Gold can be removed **alone** (single tap).")
-                    Text("Must be the **last piece** on the board.")
-                        .foregroundStyle(.secondary)
+                    Text("Gold can be removed **alone** when it's free (single tap).")
                 } header: {
                     Text("Gold")
                 }

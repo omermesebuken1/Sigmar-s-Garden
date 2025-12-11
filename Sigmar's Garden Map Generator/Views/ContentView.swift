@@ -22,6 +22,9 @@ struct ContentView: View {
     @State private var gameStartTime: Date?
     @State private var selectedDifficulty: Difficulty = .easy
     
+    // Cache for each difficulty's board state
+    @State private var cachedCells: [Difficulty: [Cell]] = [:]
+    
     @StateObject private var gameCenterManager = GameCenterManager.shared
     
     @Namespace private var buttonNamespace
@@ -85,7 +88,7 @@ struct ContentView: View {
                         .padding(.horizontal, 40)
                         .padding(.top, 16)
                         .onChange(of: selectedDifficulty) { _, _ in
-                            prepareBoard()
+                            loadOrGenerateBoard()
                         }
                     }
                     
@@ -283,7 +286,10 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            prepareBoard()
+            // Only generate board if not already loaded (preserves state on tab switch)
+            if cells.isEmpty {
+                loadOrGenerateBoard()
+            }
             gameCenterManager.authenticate()
         }
         .onReceive(timer) { _ in
@@ -293,13 +299,26 @@ struct ContentView: View {
         }
     }
     
-    private func prepareBoard() {
+    /// Load board from cache or generate new one if not cached
+    private func loadOrGenerateBoard() {
+        if let cached = cachedCells[selectedDifficulty] {
+            cells = cached
+            selectedCells = []
+            updateCellSelectability()
+        } else {
+            generateNewBoard()
+        }
+    }
+    
+    /// Generate a fresh board and cache it
+    private func generateNewBoard() {
         let gridCalculator = GridCalculator(difficulty: selectedDifficulty)
         var newCells = gridCalculator.createCells()
         let generator = MapGenerator(cells: newCells, difficulty: selectedDifficulty)
         newCells = generator.generateBoard()
         
         cells = newCells
+        cachedCells[selectedDifficulty] = newCells
         selectedCells = []
         updateCellSelectability()
     }
@@ -323,7 +342,7 @@ struct ContentView: View {
         isNewHighScore = false
         gameStartTime = nil
         currentTime = 0
-        prepareBoard()  // Generate new board on restart
+        generateNewBoard()  // Generate new board on restart
     }
     
     private func completeGame() {
