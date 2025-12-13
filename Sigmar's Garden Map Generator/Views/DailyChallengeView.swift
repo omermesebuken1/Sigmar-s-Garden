@@ -30,6 +30,7 @@ struct DailyChallengeView: View {
     // State persistence keys
     private let cellsKey = "dailyGameCells"
     private let isPlayingKey = "dailyGameIsPlaying"
+    private let isGameLostKey = "dailyGameIsLost"
     private let gameStateDate = "dailyGameStateDate"
     
     private var hasCompletedToday: Bool {
@@ -39,44 +40,27 @@ struct DailyChallengeView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                // Background (follows system appearance)
                 Color(.systemBackground)
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Header (only when not playing)
-                    if !isPlaying {
+                    // Daily Header - same style as ContentView picker
+                    if !isPlaying && !isCompleted && !isGameLost && !hasCompletedToday && !isLoading {
                         dailyHeader
                     }
                     
-                    if isLoading {
-                        // Loading state
-                        Spacer()
-                        ProgressView()
-                            .scaleEffect(1.5)
-                        Text("Loading puzzle...")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 16)
-                        Spacer()
-                    } else if hasCompletedToday && !isPlaying && !isCompleted {
-                        // Already completed today - show completion screen
-                        completedTodayView
-                    } else if isCompleted {
-                        // Just completed - show completion screen
-                        completedTodayView
-                    } else {
-                        // Game content - matches ContentView layout
-                        if isPlaying && !cells.isEmpty {
-                            AtomCounterView(cells: cells)
-                                .padding(.top, 8)
-                        }
-                        
-                        Spacer()
+                    // Atom Counter Bar (top)
+                    if isPlaying && !cells.isEmpty {
+                        AtomCounterView(cells: cells)
+                            .padding(.top, 8)
                     }
+                    
+                    Spacer()
                 }
                 
-                // Game Board - same layout as ContentView Hard mode
-                if !isLoading && !hasCompletedToday && !isCompleted && !cells.isEmpty {
+                // Game Board
+                if !cells.isEmpty && !isCompleted && !hasCompletedToday && !isLoading {
                     GameBoardView(
                         cells: cells,
                         selectedCells: selectedCells,
@@ -91,26 +75,49 @@ struct DailyChallengeView: View {
                     .offset(y: -50)
                 }
                 
-                // Bottom Controls - only Start button, no restart during play
-                if !isLoading && !isCompleted && !isGameLost && !hasCompletedToday {
+                // Bottom Controls (hidden when completed or lost or loading)
+                if !isCompleted && !isGameLost && !hasCompletedToday && !isLoading {
                     VStack {
                         Spacer()
                         
-                        // Start button - only visible when not playing
+                        // Start button - same style as ContentView
                         if !isPlaying {
-                            Button {
-                                startGame()
-                            } label: {
-                                Text("Start")
-                                    .font(.headline)
-                                    .frame(width: 150)
-                                    .padding(.vertical, 16)
+                            GlassEffectContainer(spacing: 40.0) {
+                                Button {
+                                    startGame()
+                                } label: {
+                                    Label("Start", systemImage: "play.fill")
+                                        .font(.headline)
+                                        .frame(width: 150)
+                                        .padding(.vertical, 16)
+                                }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.primary)
+                                .glassEffect(.regular)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.orange)
+                            .padding(.horizontal, 24)
                             .padding(.bottom, 100)
                         }
                     }
+                }
+                
+                // Loading overlay
+                if isLoading {
+                    VStack {
+                        Spacer()
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Loading puzzle...")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 16)
+                        Spacer()
+                    }
+                }
+                
+                // Completed screen overlay
+                if (hasCompletedToday && !isPlaying && !isGameLost) || isCompleted {
+                    completedTodayView
                 }
                 
                 // Lose overlay
@@ -120,9 +127,13 @@ struct DailyChallengeView: View {
             }
         }
         .task {
-            await loadGameState()
+            // Immediate sync updates
             remainingTime = DailyPuzzleGenerator.timeUntilNextPuzzle()
             streakManager.checkAndApplyFreezeIfNeeded()
+            
+            // Only load game state if cells are empty (not already loaded)
+            guard cells.isEmpty else { return }
+            await loadGameState()
         }
         .onReceive(countdownTimer) { _ in
             remainingTime = DailyPuzzleGenerator.timeUntilNextPuzzle()
@@ -131,6 +142,9 @@ struct DailyChallengeView: View {
             saveGameState()
         }
         .onChange(of: isPlaying) { _, _ in
+            saveGameState()
+        }
+        .onChange(of: isGameLost) { _, _ in
             saveGameState()
         }
     }
@@ -146,10 +160,19 @@ struct DailyChallengeView: View {
         if isFromToday {
             if let cellsData = UserDefaults.standard.data(forKey: cellsKey),
                let savedCells = try? JSONDecoder().decode([Cell].self, from: cellsData) {
-                cells = savedCells
-                isPlaying = UserDefaults.standard.bool(forKey: isPlayingKey)
-                updateCellSelectability()
-                isLoading = false
+                await MainActor.run {
+                    cells = savedCells
+                    isPlaying = UserDefaults.standard.bool(forKey: isPlayingKey)
+                    isGameLost = UserDefaults.standard.bool(forKey: isGameLostKey)
+                    updateCellSelectability()
+                    
+                    // If game was lost, restore lose overlay animation
+                    if isGameLost {
+                        loseOverlayOpacity = 0.9
+                    }
+                    
+                    isLoading = false
+                }
                 return
             }
         }
@@ -166,8 +189,9 @@ struct DailyChallengeView: View {
             UserDefaults.standard.set(cellsData, forKey: cellsKey)
         }
         
-        // Save playing state
+        // Save game state
         UserDefaults.standard.set(isPlaying, forKey: isPlayingKey)
+        UserDefaults.standard.set(isGameLost, forKey: isGameLostKey)
         
         // Save date
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: gameStateDate)
@@ -176,42 +200,53 @@ struct DailyChallengeView: View {
     private func clearGameState() {
         UserDefaults.standard.removeObject(forKey: cellsKey)
         UserDefaults.standard.removeObject(forKey: isPlayingKey)
+        UserDefaults.standard.removeObject(forKey: isGameLostKey)
         UserDefaults.standard.removeObject(forKey: gameStateDate)
     }
     
     // MARK: - Subviews
     
     private var dailyHeader: some View {
-        VStack(spacing: 8) {
-            HStack {
+        HStack(spacing: 12) {
+            // Left: Calendar icon + Difficulty badge
+            HStack(spacing: 8) {
                 Image(systemName: "calendar.circle.fill")
-                    .font(.title2)
+                    .font(.title3)
                     .foregroundStyle(.orange)
                 
-                Text("Daily Challenge")
-                    .font(.title2.bold())
-                
-                Spacer()
-                
-                // Freeze indicator
-                HStack(spacing: 4) {
-                    Image(systemName: "snowflake")
-                        .foregroundStyle(.cyan)
-                    Text("\(streakManager.getFreezeCount())/\(StreakManager.maxFreezes)")
-                        .font(.caption.bold())
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.cyan.opacity(0.2))
-                .clipShape(Capsule())
+                Text(DailyPuzzleGenerator.dailyDifficulty.displayName)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(difficultyColor(for: DailyPuzzleGenerator.dailyDifficulty))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(difficultyColor(for: DailyPuzzleGenerator.dailyDifficulty).opacity(0.2))
+                    .clipShape(Capsule())
             }
-            .padding(.horizontal)
-            .padding(.top, 16)
             
-            // Date display
-            Text(formattedDate())
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            Spacer()
+            
+            // Right: Freeze indicator
+            HStack(spacing: 4) {
+                Image(systemName: "snowflake")
+                    .font(.subheadline)
+                    .foregroundStyle(.cyan)
+                Text("\(streakManager.getFreezeCount())/\(StreakManager.maxFreezes)")
+                    .font(.subheadline.bold())
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.cyan.opacity(0.2))
+            .clipShape(Capsule())
+        }
+        .padding(.horizontal, 40)
+        .padding(.top, 16)
+    }
+    
+    private func difficultyColor(for difficulty: Difficulty) -> Color {
+        switch difficulty {
+        case .easy: return .green
+        case .medium: return .orange
+        case .hard: return .red
         }
     }
     
@@ -348,21 +383,40 @@ struct DailyChallengeView: View {
                 Text("No Moves Left!")
                     .font(.largeTitle.bold())
                 
-                Text("Try again tomorrow!")
+                Text("Try again!")
                     .font(.headline)
                     .foregroundStyle(.secondary)
                 
-                VStack(spacing: 8) {
+                // Restart button - same style as ContentView
+                GlassEffectContainer(spacing: 40.0) {
+                    Button {
+                        restartGame()
+                    } label: {
+                        Label("Restart", systemImage: "arrow.clockwise")
+                            .font(.headline)
+                            .frame(width: 150)
+                            .padding(.vertical, 16)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
+                    .glassEffect(.regular)
+                }
+                .padding(.horizontal, 24)
+                
+                // Next puzzle countdown (less prominent)
+                VStack(spacing: 4) {
                     Text("Next puzzle in")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                     
                     Text(DailyPuzzleGenerator.formatRemainingTime(remainingTime))
-                        .font(.system(.title3, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
                 }
-                .padding()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
                 .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
             .opacity(loseOverlayOpacity)
         }
@@ -373,17 +427,21 @@ struct DailyChallengeView: View {
     private func loadDailyPuzzle() async {
         // Check cache first for instant loading
         if let cached = DailyPuzzleGenerator.getCachedPuzzle() {
-            cells = cached
-            updateCellSelectability()
-            isLoading = false
+            await MainActor.run {
+                cells = cached
+                updateCellSelectability()
+                isLoading = false
+            }
             return
         }
         
         // Generate async
         let generatedCells = await DailyPuzzleGenerator.generateDailyPuzzleAsync()
-        cells = generatedCells
-        updateCellSelectability()
-        isLoading = false
+        await MainActor.run {
+            cells = generatedCells
+            updateCellSelectability()
+            isLoading = false
+        }
     }
     
     private func startGame() {
@@ -396,6 +454,7 @@ struct DailyChallengeView: View {
     private func completeGame() {
         isPlaying = false
         isCompleted = true
+        isGameLost = false // Ensure mutually exclusive with lose state
         winOverlayOpacity = 0
         
         // Clear saved state
@@ -417,16 +476,39 @@ struct DailyChallengeView: View {
     private func loseGame() {
         isPlaying = false
         isGameLost = true
+        isCompleted = false // Ensure mutually exclusive with completed state
         loseOverlayOpacity = 0
-        
-        // Clear saved state
-        clearGameState()
-        
-        // Mark as attempted so they can't retry
-        DailyPuzzleGenerator.markCompleted()
         
         withAnimation(.easeIn(duration: 1.2)) {
             loseOverlayOpacity = 0.9
+        }
+    }
+    
+    private func restartGame() {
+        // Clear saved game state (so we don't reload partial game)
+        UserDefaults.standard.removeObject(forKey: cellsKey)
+        UserDefaults.standard.removeObject(forKey: isPlayingKey)
+        UserDefaults.standard.removeObject(forKey: isGameLostKey)
+        // Note: Keep gameStateDate so we know it's today's puzzle
+        
+        // Reset UI state
+        isGameLost = false
+        isPlaying = true
+        loseOverlayOpacity = 0
+        selectedCells = []
+        
+        // Reload fresh daily puzzle from cache
+        if let cached = DailyPuzzleGenerator.getCachedPuzzle() {
+            cells = cached
+            updateCellSelectability()
+        } else {
+            // If cache is empty, reload async
+            Task {
+                await loadDailyPuzzle()
+                await MainActor.run {
+                    isPlaying = true
+                }
+            }
         }
     }
     

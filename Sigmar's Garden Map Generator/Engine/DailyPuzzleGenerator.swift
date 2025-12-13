@@ -12,8 +12,24 @@ import GameplayKit
 
 class DailyPuzzleGenerator {
     
-    /// The difficulty for daily challenges (Hard mode - 11x11 grid)
-    static let dailyDifficulty: Difficulty = .hard
+    /// Get the difficulty for today's daily challenge (random: Easy, Medium, or Hard)
+    /// Same for everyone on the same day (based on seed)
+    static var dailyDifficulty: Difficulty {
+        return getDailyDifficulty(for: Date())
+    }
+    
+    /// Get difficulty for a specific date (seeded random)
+    static func getDailyDifficulty(for date: Date) -> Difficulty {
+        let seed = getSeed(for: date)
+        let random = GKMersenneTwisterRandomSource(seed: seed)
+        let difficultyIndex = random.nextInt(upperBound: 3) // 0, 1, or 2
+        
+        switch difficultyIndex {
+        case 0: return .easy
+        case 1: return .medium
+        default: return .hard
+        }
+    }
     
     /// Maximum attempts to generate a solvable puzzle
     private static let maxGenerationAttempts = 50
@@ -82,13 +98,13 @@ class DailyPuzzleGenerator {
     /// Internal sync generation
     private static func generateDailyPuzzleSync(for date: Date) -> [Cell] {
         let baseSeed = getSeed(for: date)
+        let difficulty = getDailyDifficulty(for: date)
         
         // Try multiple seeds until we find a solvable puzzle
         for attempt in 0..<maxGenerationAttempts {
             let seed = baseSeed + UInt64(attempt * 1000)
             let random = GKMersenneTwisterRandomSource(seed: seed)
             
-            let difficulty = dailyDifficulty
             let gridCalculator = GridCalculator(difficulty: difficulty)
             var cells = gridCalculator.createCells()
             
@@ -104,9 +120,9 @@ class DailyPuzzleGenerator {
         // Fallback: return the last generated puzzle even if not verified solvable
         // This should rarely happen
         let random = GKMersenneTwisterRandomSource(seed: baseSeed)
-        let gridCalculator = GridCalculator(difficulty: dailyDifficulty)
+        let gridCalculator = GridCalculator(difficulty: difficulty)
         var cells = gridCalculator.createCells()
-        cells = generateSeededBoard(cells: cells, difficulty: dailyDifficulty, random: random)
+        cells = generateSeededBoard(cells: cells, difficulty: difficulty, random: random)
         return cells
     }
     
