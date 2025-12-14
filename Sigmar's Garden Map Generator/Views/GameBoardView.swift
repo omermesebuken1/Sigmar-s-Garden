@@ -18,14 +18,14 @@ struct GameBoardView: View {
     // Hexagon dimensions - scale based on grid size
     private var hexHeight: CGFloat {
         // Larger tiles for smaller grids
-        let baseSize = availableSize.height / CGFloat(gridSize + 1)
+        let baseSize = availableSize.height / CGFloat(gridSize)
         switch gridSize {
         case 7:
             return max(40, min(baseSize, 55))
         case 9:
-            return max(32, min(baseSize, 48))
+            return max(32, min(baseSize, 47))
         default: // 11 or other
-            return max(28, min(baseSize, 41))
+            return max(28, min(baseSize, 39))
         }
     }
     

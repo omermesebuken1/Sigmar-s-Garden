@@ -52,14 +52,14 @@ struct HexTileView: View {
     
     private var contentOpacity: Double {
         // Empty tiles always have consistent opacity
-        guard let atomType = atomType, !atomType.isEmpty, atomType != "ph" else {
+        guard let atomType = atomType, atomType != "ph" else {
             return 1.0
         }
         // Before game starts, all tiles have same opacity
         if !isGameActive {
             return 1.0
         }
-        return isSelectable ? 1.0 : 0.3
+        return isSelectable ? 1.0 : 0.4
     }
     
     private var strokeColor: Color {
@@ -71,17 +71,17 @@ struct HexTileView: View {
     }
     
     private var uniformIconColor: Color {
-        colorScheme == .light ? Color.gray.opacity(0.6) : Color.gray.opacity(0.7)
+        colorScheme == .light ? Color.black.opacity(0.3) : Color.white.opacity(0.9)
     }
     
     private var fillColor: Color {
         guard let atomType = atomType, !atomType.isEmpty, atomType != "ph" else {
             // Empty tile
-            return colorScheme == .light ? Color.gray.opacity(0.15) : Color.white.opacity(0.1)
+            return colorScheme == .light ? Color.gray.opacity(0.35) : Color.gray.opacity(0.02)
         }
         // Uniform color when game not started OR when tile is not selectable
         if !isGameActive || !isSelectable {
-            return colorScheme == .light ? Color.gray.opacity(0.25) : Color.gray.opacity(0.35)
+            return colorScheme == .light ? Color.gray.opacity(0.1) : Color.gray.opacity(0.3)
         }
         return backgroundColor(for: atomType)
     }
@@ -118,14 +118,14 @@ struct HexTileView: View {
         case "salt": return .white
         case "quintessence": return Color(red: 0.6, green: 0.3, blue: 0.8)
         case "quicksilver": return .white
-        case "lead": return Color(red: 0.1, green: 0.1, blue: 0.1)
-        case "tin": return Color(red: 0.1, green: 0.1, blue: 0.1)
-        case "iron": return Color(red: 0.1, green: 0.1, blue: 0.1)
-        case "copper": return Color(red: 0.1, green: 0.1, blue: 0.1)
-        case "silver": return Color(red: 0.1, green: 0.1, blue: 0.1)
-        case "gold": return Color(red: 0.1, green: 0.1, blue: 0.1)
-        case "mors": return Color(red: 0.3, green: 0.2, blue: 0.2)
-        case "vitae": return Color(red: 0.3, green: 0.2, blue: 0.2)
+        case "lead": return Color(red: 0.2, green: 0.2, blue: 0.3)
+        case "tin": return Color(red: 0.2, green: 0.2, blue: 0.3)
+        case "iron": return Color(red: 0.2, green: 0.2, blue: 0.3)
+        case "copper": return Color(red: 0.2, green: 0.2, blue: 0.3)
+        case "silver": return Color(red: 0.2, green: 0.2, blue: 0.3)
+        case "gold": return Color(red: 0.2, green: 0.2, blue: 0.3)
+        case "mors": return Color(red: 0.6, green: 0.4, blue: 0.5)
+        case "vitae": return Color(red: 0.6, green: 0.4, blue: 0.5)
         default: return .gray
         }
     }
@@ -139,13 +139,13 @@ struct HexTileView: View {
         case "salt": return .blue
         case "quintessence": return .white
         case "quicksilver": return .orange
-        case "lead": return .white
+        case "lead": return .green
         case "tin": return .cyan
         case "iron": return .red
         case "copper": return .orange
-        case "silver": return .gray
+        case "silver": return .white
         case "gold": return .yellow
-        case "mors": return .purple
+        case "mors": return .black
         case "vitae": return .white
         default: return .black
         }

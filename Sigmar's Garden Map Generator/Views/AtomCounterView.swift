@@ -36,7 +36,7 @@ struct AtomCounterView: View {
     var body: some View {
         VStack(spacing: 6) {
             // Row 1
-            HStack(spacing: 6) {
+            HStack(spacing: 2) {
                 ForEach(row1, id: \.self) { atomType in
                     if let count = atomCounts[atomType], count > 0 {
                         AtomCountBadge(
@@ -49,7 +49,7 @@ struct AtomCounterView: View {
             }
             
             // Row 2
-            HStack(spacing: 6) {
+            HStack(spacing: 2) {
                 ForEach(row2, id: \.self) { atomType in
                     if let count = atomCounts[atomType], count > 0 {
                         AtomCountBadge(
@@ -79,12 +79,10 @@ struct AtomCounterView: View {
             let morsCount = atomCounts["mors"] ?? 0
             return count != morsCount
             
-        // Quicksilver matches with metals - needs even count relative to metals
         case "salt":
             return count % 2 != 0
             
-        // Salt is flexible (matches with any cardinal) - usually ok
-        case "salt":
+        case "quicksilver":
             return false
             
         // Gold is removed alone - always ok
@@ -161,11 +159,11 @@ struct AtomCountBadge: View {
         case "salt": return .blue
         case "quintessence": return .purple
         case "quicksilver": return .orange
-        case "lead": return .white
+        case "lead": return .green
         case "tin": return .cyan
         case "iron": return .red
         case "copper": return .orange
-        case "silver": return .gray
+        case "silver": return .white
         case "gold": return .yellow
         case "mors": return .purple
         case "vitae": return .white
